@@ -32,8 +32,7 @@ class Item implements ItemInterface
     /** @var int */
     protected $pubDate;
 
-    /** @var array */
-    protected $enclosure;
+    protected array $enclosures = [];
 
     /** @var string */
     protected $author;
@@ -73,19 +72,6 @@ class Item implements ItemInterface
         return $this;
     }
 
-    public function categories(array $categories) 
-    {
-        foreach ($categories as $cat) {
-            $domain = null;
-            if (is_array($cat) && !empty($cat)) {
-                $domain = isset($cat[1]) ? $cat[1] : null;
-                $cat = $cat[0];
-            }
-            $this->category($cat, $domain);
-        }
-        return $this;
-    }
-
     public function guid($guid, $isPermalink = false)
     {
         $this->guid = $guid;
@@ -99,9 +85,10 @@ class Item implements ItemInterface
         return $this;
     }
 
-    public function enclosure($url, $length = 0, $type = 'audio/mpeg')
+    public function enclosure(string $url, ?int $length = null, string $type = 'audio/mpeg'): self
     {
-        $this->enclosure = ['url' => $url, 'length' => $length, 'type' => $type];
+        $this->enclosures[$url] = ['url' => $url, 'length' => $length, 'type' => $type];
+
         return $this;
     }
 
@@ -133,25 +120,18 @@ class Item implements ItemInterface
     {
         $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8" ?><item></item>', LIBXML_NOERROR | LIBXML_ERR_NONE | LIBXML_ERR_FATAL);
 
-        if ($this->title) {
-            if ($this->preferCdata) {
-                $xml->addCdataChild('title', $this->title);
-            } else {
-                $xml->addChild('title', $this->title);
-            }
+        if ($this->preferCdata) {
+            $xml->addCdataChild('title', $this->title);
+        } else {
+            $xml->addChild('title', $this->title);
         }
 
-        if ($this->url) {
-            $xml->addChild('link', $this->url);
-        }
+        $xml->addChild('link', $this->url);
 
-        // At least one of <title> or <description> must be present
-        if ($this->description || ! $this->title) {
-            if ($this->preferCdata) {
-                $xml->addCdataChild('description', $this->description);
-            } else {
-                $xml->addChild('description', $this->description);
-            }
+        if ($this->preferCdata) {
+            $xml->addCdataChild('description', $this->description);
+        } else {
+            $xml->addChild('description', $this->description);
         }
 
         if ($this->contentEncoded) {
@@ -178,13 +158,15 @@ class Item implements ItemInterface
             $xml->addChild('pubDate', date(DATE_RSS, $this->pubDate));
         }
 
-        if (is_array($this->enclosure) && (count($this->enclosure) == 3)) {
-            $element = $xml->addChild('enclosure');
-            $element->addAttribute('url', $this->enclosure['url']);
-            $element->addAttribute('type', $this->enclosure['type']);
+        foreach ($this->enclosures as $enclosure) {
+            if (is_array($enclosure)) {
+                $element = $xml->addChild('enclosure');
+                $element->addAttribute('url', $enclosure['url']);
+                $element->addAttribute('type', $enclosure['type']);
 
-            if ($this->enclosure['length']) {
-                $element->addAttribute('length', $this->enclosure['length']);
+                if ($enclosure['length']) {
+                    $element->addAttribute('length', $enclosure['length']);
+                }
             }
         }
 

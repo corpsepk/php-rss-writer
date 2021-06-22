@@ -62,11 +62,12 @@ interface ItemInterface
     /**
      * Set enclosure
      * @param string $url Url to media file
-     * @param int $length Length in bytes of the media file
+     * @param ?int $length Length in bytes of the media file
      * @param string $type Media type, default is audio/mpeg
+     *
      * @return $this
      */
-    public function enclosure($url, $length = 0, $type = 'audio/mpeg');
+    public function enclosure(string $url, ?int $length = null, string $type = 'audio/mpeg');
 
     /**
      * Set the author
